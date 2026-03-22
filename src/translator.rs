@@ -11,11 +11,16 @@ Keep original formatting.";
 #[derive(Deserialize)]
 struct Response {
     content: Vec<ContentBlock>,
+    stop_reason: Option<String>,
 }
 
 #[derive(Deserialize)]
-struct ContentBlock {
-    text: String,
+#[serde(tag = "type")]
+enum ContentBlock {
+    #[serde(rename = "text")]
+    Text { text: String },
+    #[serde(other)]
+    Other,
 }
 
 pub fn translate(
@@ -32,7 +37,13 @@ pub fn translate(
         "messages": [{"role": "user", "content": text}]
     });
 
-    let resp = ureq::post(api_url)
+    let agent = ureq::AgentBuilder::new()
+        .timeout_connect(std::time::Duration::from_secs(10))
+        .timeout_read(std::time::Duration::from_secs(30))
+        .build();
+
+    let resp = agent
+        .post(api_url)
         .set("x-api-key", api_key)
         .set("anthropic-version", "2023-06-01")
         .set("content-type", "application/json")
@@ -41,14 +52,22 @@ pub fn translate(
     match resp {
         Ok(resp) => {
             let result: Response = resp.into_json()?;
-            result
+            let text: String = result
                 .content
                 .into_iter()
-                .next()
-                .map(|b| b.text)
-                .ok_or_else(|| -> Box<dyn std::error::Error> {
-                    "empty response from API".into()
+                .filter_map(|b| match b {
+                    ContentBlock::Text { text } => Some(text),
+                    ContentBlock::Other => None,
                 })
+                .collect::<Vec<_>>()
+                .join("");
+            if text.is_empty() {
+                return Err("empty response from API".into());
+            }
+            if result.stop_reason.as_deref() == Some("max_tokens") {
+                return Err("translation truncated (text too long)".into());
+            }
+            Ok(text)
         }
         Err(ureq::Error::Status(code, resp)) => {
             let body = resp.into_string().unwrap_or_default();

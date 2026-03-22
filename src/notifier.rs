@@ -3,7 +3,12 @@ use std::process::Command;
 /// Show loading notification, return its ID for later replacement.
 pub fn loading() -> Option<String> {
     let output = Command::new("notify-send")
-        .args(["--print-id", "--app-name=instran", "instran", "⏳ Translating..."])
+        .args([
+            "--print-id",
+            "--app-name=instran",
+            "instran",
+            "⏳ Translating...",
+        ])
         .output()
         .ok()?;
 
