@@ -1,15 +1,31 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-/// Read text from Wayland primary selection (mouse-selected text).
+/// Read text from Wayland clipboard (Super+C), falling back to primary selection (mouse select).
 pub fn read() -> Result<String, Box<dyn std::error::Error>> {
-    let output = Command::new("wl-paste").arg("--primary").output()?;
+    if let Ok(text) = read_clipboard()
+        && !text.is_empty()
+    {
+        return Ok(text);
+    }
+    read_primary()
+}
 
+fn read_clipboard() -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("wl-paste").output()?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("wl-paste: {stderr}").into());
     }
+    Ok(String::from_utf8(output.stdout)?)
+}
 
+fn read_primary() -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("wl-paste").arg("--primary").output()?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("wl-paste: {stderr}").into());
+    }
     Ok(String::from_utf8(output.stdout)?)
 }
 
