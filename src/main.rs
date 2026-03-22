@@ -12,7 +12,9 @@ fn main() {
 }
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let api_key = std::env::var("ANTHROPIC_API_KEY").map_err(|_| "set ANTHROPIC_API_KEY")?;
+    let api_key = std::env::var("INSTRAN_API_KEY")
+        .or_else(|_| std::env::var("ANTHROPIC_API_KEY"))
+        .map_err(|_| "set INSTRAN_API_KEY or ANTHROPIC_API_KEY")?;
     let api_url = std::env::var("INSTRAN_API_URL")
         .unwrap_or_else(|_| "https://api.anthropic.com/v1/messages".into());
     let model =
