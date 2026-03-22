@@ -17,13 +17,13 @@ pub fn loading() -> Option<String> {
 }
 
 /// Replace notification with success message.
-pub fn success(id: Option<&str>, body: &str) {
+pub fn success(id: Option<&str>) {
     let mut cmd = Command::new("notify-send");
     cmd.arg("--app-name=instran");
     if let Some(id) = id {
         cmd.arg(format!("--replace-id={id}"));
     }
-    cmd.args(["✅ instran", body]);
+    cmd.args(["✅ instran", "Done"]);
     let _ = cmd.status();
 }
 

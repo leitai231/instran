@@ -1,5 +1,6 @@
 mod clipboard;
 mod notifier;
+mod popup;
 mod translator;
 
 use std::process;
@@ -40,8 +41,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Err(e);
     }
 
-    let preview: String = result.chars().take(80).collect();
-    notifier::success(notif_id.as_deref(), &preview);
+    notifier::success(notif_id.as_deref());
+    popup::show(&result);
 
     Ok(())
 }

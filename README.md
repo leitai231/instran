@@ -9,22 +9,21 @@ Auto-detects Chinese ↔ English; other languages → English.
 - Wayland compositor (Hyprland / Sway / etc.)
 - `wl-paste`, `wl-copy` (wl-clipboard)
 - `notify-send` (libnotify)
+- [Ghostty](https://ghostty.org/) (for popup window)
 - Anthropic API key
 
 ### Arch Linux
 
 ```bash
-sudo pacman -S wl-clipboard libnotify
+sudo pacman -S wl-clipboard libnotify ghostty
 ```
 
 ## Build
 
 ```bash
-git clone <repo-url> && cd instran
+git clone https://github.com/leitai231/instran.git && cd instran
 cargo build --release
 ```
-
-Binary at `target/release/instran` (~1.9MB).
 
 Install to PATH:
 
@@ -46,7 +45,7 @@ Optional environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
+| `INSTRAN_API_KEY` | falls back to `ANTHROPIC_API_KEY` | API key |
 | `INSTRAN_API_URL` | `https://api.anthropic.com/v1/messages` | API endpoint |
 | `INSTRAN_MODEL` | `claude-sonnet-4-20250514` | Model ID |
 
@@ -54,28 +53,27 @@ Optional environment variables:
 
 ### Basic flow
 
-1. **Select text** with mouse (enters Wayland Primary Selection)
+1. **Copy text** with `Ctrl+C` / `Super+C`, or just **select** with mouse
 2. Run `instran`
-3. **Ctrl+V** to paste the translation
+3. A floating popup shows the translation; result is also copied to clipboard
+4. **Ctrl+V** to paste anywhere
 
-No Ctrl+C needed — mouse selection is enough.
-
-### Manual test
-
-```bash
-# Select some English text, then:
-instran
-
-# Check clipboard:
-wl-paste
-```
+Clipboard (Ctrl+C) is checked first; if empty, falls back to mouse selection (primary).
 
 ### Keybinding (Hyprland)
 
-Add to `~/.config/hypr/hyprland.conf`:
+Add to `~/.config/hypr/bindings.conf`:
 
 ```
 bind = $mainMod SHIFT, T, exec, instran
+```
+
+Add to `~/.config/hypr/hyprland.conf` for the floating popup:
+
+```
+windowrule = float on, match:title instran-popup
+windowrule = size 600 400, match:title instran-popup
+windowrule = center on, match:title instran-popup
 ```
 
 Then `Super+Shift+T` = translate selected text.
@@ -85,9 +83,10 @@ Then `Super+Shift+T` = translate selected text.
 ```
 src/
 ├── main.rs          # entry + orchestration
-├── clipboard.rs     # wl-paste -p read / wl-copy write
+├── clipboard.rs     # wl-paste read (clipboard → primary) / wl-copy write
 ├── notifier.rs      # notify-send --print-id / --replace-id
-└── translator.rs    # Claude Messages API (ureq)
+├── popup.rs         # ghostty floating popup display
+└── translator.rs    # Claude Messages API (ureq, 10s/30s timeout)
 ```
 
-Flow: `read primary selection → notify loading → call API → write clipboard → notify done`
+Flow: `read clipboard/selection → notify loading → call API → write clipboard → notify done → show popup`
